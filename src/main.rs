@@ -65,7 +65,7 @@ fn main() -> Result<(), Error> {
     //println!("{}", cue_sheet);
     let mut tracklist = Tracklist::parse(&cue_sheet)?; 
 
-    //println!("Debug print of tracklist: {:#?}", tracklist);
+    println!("Debug print of tracklist: {:#?}", tracklist);
     let file = tracklist.files.remove(0);
     //println!("Debug print of file: {:#?}", file);
 
@@ -75,6 +75,15 @@ fn main() -> Result<(), Error> {
       tracklist.date.unwrap_or("[No Year]".to_string()),
       tracklist.title.unwrap_or("[No Album]".to_string())
     );
+
+    if let Some(cd) = tracklist.discnumber {
+      if let Some (num) = tracklist.totaldiscs {
+        println!(" (CD {}/{})", cd, num);
+      } else {
+        println!(" (CD {})", cd);
+      }
+    }
+
     let dir_info = entry.parent().unwrap().iter().last().unwrap().to_str().unwrap();
     if dir_info == cue_info {
       println!("{}", cue_info.bold());
@@ -83,9 +92,23 @@ fn main() -> Result<(), Error> {
       println!("Data from cue: {}", cue_info);
     }
 
+
     for ref t in file.tracks {
-      println!("test index: {:?}", t.index);
-      let (_, time) = t.index.iter().last().unwrap(); 
+
+      //  Need to retreive index 1 (1, time)
+      //  Could be [0] or [1]
+      //  This is ugly, could probably be done with a .map()
+      let (a,b) = &t.index[0];
+      //println!("a - b: {:?} {:?}", a, b);
+      let time = if *a == 1 {
+        b
+      } else {
+        let (_,b) = &t.index[1];
+        b
+      };
+
+      //println!("Time Index 1: {:?}", time);
+
       let duration = match t.duration.clone() {
         Some(time) => time.to_string_tiny(),
         None => "??:??".to_string(),
