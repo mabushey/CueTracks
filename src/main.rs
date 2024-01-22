@@ -76,21 +76,31 @@ fn main() -> Result<(), Error> {
       tracklist.title.unwrap_or("[No Album]".to_string())
     );
 
-    if let Some(cd) = tracklist.discnumber {
-      if let Some (num) = tracklist.totaldiscs {
-        println!(" (CD {}/{})", cd, num);
+    let cd_info = {
+      if let Some(cd) = tracklist.discnumber {
+        if let Some (num) = tracklist.totaldiscs {
+          Some(format!("(CD{}/{})", cd, num))
+        } else {
+          Some(format!("(CD{})", cd))
+        }
       } else {
-        println!(" (CD {})", cd);
+        None
       }
-    }
+    };
 
     let dir_info = entry.parent().unwrap().iter().last().unwrap().to_str().unwrap();
     if dir_info == cue_info {
-      println!("{}", cue_info.bold());
+      print!("{}", cue_info.bold());
     } else {
       println!("Data from dir: {}", dir_info);
-      println!("Data from cue: {}", cue_info);
+      print!("Data from cue: {}", cue_info);
     }
+    if let Some(x) = cd_info {
+      println!(" {}", x.yellow());
+    } else {
+      println!();
+    }
+
 
 
     for ref t in file.tracks {
