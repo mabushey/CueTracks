@@ -94,7 +94,8 @@ fn main() -> Result<(), Error> {
     //println!("parent dir: {:?}", parent_dir);
     let file_flac = path::Path::new(parent_dir).join(file.name);
     //println!("Flac file: {:?}", file_flac);
-    let total_seconds = if file_flac.is_file() {
+    let (total_seconds, flac_info) = if file_flac.is_file() {
+    //let total_seconds = if file_flac.is_file() {
       if file_flac.extension() == Some(OsStr::new("flac")) {
           let reader = claxon::FlacReader::open(&file_flac).expect("failed to open FLAC stream");
           for (name, value) in reader.tags() {
@@ -102,28 +103,37 @@ fn main() -> Result<(), Error> {
             // `metaflac --block-type=VORBIS_COMMENT --list` would print.
             println!("{}={}", name, value);
           }
+          println!("Artist={}", reader.get_tag("artist").next().expect("[No Artist]"));
+          let flac_info = format!("{} - {} - {}",
+            reader.get_tag("artist").next().expect("[No Artist]"),
+            reader.get_tag("date").next().expect("[No Year]"),
+            reader.get_tag("album").next().expect("[No Album]")
+          );
+
           let streaminfo = reader.streaminfo();
           let sample_rate:u64 = streaminfo.sample_rate.into();
           println!("Flac specs: {}/{} {} Channels", streaminfo.bits_per_sample, sample_rate/1000, streaminfo.channels);
 
           if let Some(x) = streaminfo.samples {
-            Some(x.rounded_div(sample_rate))
+            (Some(x.rounded_div(sample_rate)), Some(flac_info))
           } else {
-            None
+            (None, Some(flac_info))
           }
       } else {
-        None
+        (None, None)
       }
     } else {
-      None
+      (None, None)
     };
-    //println!("Got total: {:?})", total_seconds);
 
     println!();
     let dir_info = parent_dir.iter().last().unwrap().to_str().unwrap();
     if dir_info == cue_info {
       print!("{}", cue_info.bold());
     } else {
+      if let Some(a) = flac_info {
+        println!("Data from flac: {}", a);
+      }
       println!("Data from dir: {}", dir_info);
       print!("Data from cue: {}", cue_info);
     }
