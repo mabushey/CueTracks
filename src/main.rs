@@ -6,6 +6,9 @@ use std::ffi::OsStr;
 use walkdir::WalkDir;
 use cue_sheet::errors::Error;
 use cue_sheet::tracklist::Tracklist;
+use cue_sheet::parser::Time;
+use claxon;
+use rounded_div::RoundedDiv;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -59,16 +62,15 @@ fn main() -> Result<(), Error> {
   //println!("Output: {:?}", cue_files);
 
   for entry in cue_files.iter() {
-    println!("Entry: {:?}", entry);
+    println!("Cue Sheet: {:?}", entry);
 
     let cue_sheet = fs::read_to_string(entry).unwrap();
     //println!("{}", cue_sheet);
     let mut tracklist = Tracklist::parse(&cue_sheet)?; 
 
-    println!("Debug print of tracklist: {:#?}", tracklist);
+    //println!("Debug print of tracklist: {:#?}", tracklist);
     let file = tracklist.files.remove(0);
     //println!("Debug print of file: {:#?}", file);
-
 
     let cue_info = format!("{} - {} - {}",
       tracklist.performer.unwrap_or("[No Artist]".to_string()),
@@ -79,16 +81,46 @@ fn main() -> Result<(), Error> {
     let cd_info = {
       if let Some(cd) = tracklist.discnumber {
         if let Some (num) = tracklist.totaldiscs {
-          Some(format!("(CD{}/{})", cd, num))
+          Some(format!("CD{}/{}", cd, num))
         } else {
-          Some(format!("(CD{})", cd))
+          Some(format!("CD{}", cd))
         }
       } else {
         None
       }
     };
 
-    let dir_info = entry.parent().unwrap().iter().last().unwrap().to_str().unwrap();
+    let parent_dir = entry.parent().unwrap();
+    //println!("parent dir: {:?}", parent_dir);
+    let file_flac = path::Path::new(parent_dir).join(file.name);
+    //println!("Flac file: {:?}", file_flac);
+    let total_seconds = if file_flac.is_file() {
+      if file_flac.extension() == Some(OsStr::new("flac")) {
+          let reader = claxon::FlacReader::open(&file_flac).expect("failed to open FLAC stream");
+          for (name, value) in reader.tags() {
+            // Print comments in a format similar to what
+            // `metaflac --block-type=VORBIS_COMMENT --list` would print.
+            println!("{}={}", name, value);
+          }
+          let streaminfo = reader.streaminfo();
+          let sample_rate:u64 = streaminfo.sample_rate.into();
+          println!("Flac specs: {}/{} {} Channels", streaminfo.bits_per_sample, sample_rate/1000, streaminfo.channels);
+
+          if let Some(x) = streaminfo.samples {
+            Some(x.rounded_div(sample_rate))
+          } else {
+            None
+          }
+      } else {
+        None
+      }
+    } else {
+      None
+    };
+    //println!("Got total: {:?})", total_seconds);
+
+    println!();
+    let dir_info = parent_dir.iter().last().unwrap().to_str().unwrap();
     if dir_info == cue_info {
       print!("{}", cue_info.bold());
     } else {
@@ -96,7 +128,7 @@ fn main() -> Result<(), Error> {
       print!("Data from cue: {}", cue_info);
     }
     if let Some(x) = cd_info {
-      println!(" {}", x.yellow());
+      println!(" - {}", x.yellow());
     } else {
       println!();
     }
@@ -105,23 +137,23 @@ fn main() -> Result<(), Error> {
 
     for ref t in file.tracks {
 
-      //  Need to retreive index 1 (1, time)
-      //  Could be [0] or [1]
-      //  This is ugly, could probably be done with a .map()
-      let (a,b) = &t.index[0];
-      //println!("a - b: {:?} {:?}", a, b);
-      let time = if *a == 1 {
-        b
-      } else {
-        let (_,b) = &t.index[1];
-        b
-      };
-
-      //println!("Time Index 1: {:?}", time);
+      // Retreive INDEX 01 - Could be 1st or 2nd element
+      // INDEX 01 is required and denotes the start of the track, while
+      // INDEX 00 is optional and denotes the pregap.
+      let (_,time) = t.index.clone().into_iter().find(|a| a.0 == 1).unwrap();
 
       let duration = match t.duration.clone() {
         Some(time) => time.to_string_tiny(),
-        None => "??:??".to_string(),
+        None => {
+          match total_seconds {
+            Some(sec) => {
+                let flac_frames:i64 = (sec*75).try_into().unwrap();
+                let track_frames = time.total_frames();
+                Time::from_frames(flac_frames - track_frames).to_string_tiny()
+            },
+            None => "??:??".to_string(),
+          }
+        }
       };
       println!(
           "{:02} - [{}] {} [{}]",
@@ -130,6 +162,14 @@ fn main() -> Result<(), Error> {
           t.title.as_ref().unwrap(),
           duration
       );
+          //println!("Index: {:?}", t.index);
+          //let tmp = t.index.clone().into_iter().find(|a| a.0 == 0);
+          //println!("Index 0: {:?}", tmp);
+          //let tmp = t.index.clone().into_iter().find(|a| a.0 == 1);
+          //println!("Index 1: {:?}", tmp);
+          //let tmp = t.index.clone().into_iter().nth(0);
+          //println!("First Index: {:?}", tmp);
+
     }
 
     // Add this back in for VA releases
