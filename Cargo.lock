@@ -173,7 +173,6 @@ dependencies = [
  "claxon",
  "colored",
  "cue_sheet",
- "rounded-div",
  "walkdir",
 ]
 
@@ -252,12 +251,6 @@ checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
 dependencies = [
  "proc-macro2",
 ]
-
-[[package]]
-name = "rounded-div"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "464c8fb0a126d6a0326baf6abf1aa62c2da0d5780aa781a81451d64f543f5e2f"
 
 [[package]]
 name = "rustc-demangle"

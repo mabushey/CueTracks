@@ -8,7 +8,6 @@ use cue_sheet::errors::Error;
 use cue_sheet::tracklist::Tracklist;
 use cue_sheet::parser::Time;
 use claxon;
-use rounded_div::RoundedDiv;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -62,7 +61,7 @@ fn main() -> Result<(), Error> {
   //println!("Output: {:?}", cue_files);
 
   for entry in cue_files.iter() {
-    println!("Cue Sheet: {:?}", entry);
+    println!("\nCue Sheet: {:?}", entry);
 
     let cue_sheet = fs::read_to_string(entry).unwrap();
     //println!("{}", cue_sheet);
@@ -94,7 +93,7 @@ fn main() -> Result<(), Error> {
     //println!("parent dir: {:?}", parent_dir);
     let file_flac = path::Path::new(parent_dir).join(file.name);
     //println!("Flac file: {:?}", file_flac);
-    let (total_seconds, flac_info) = if file_flac.is_file() {
+    let (tags, streaminfo) = if file_flac.is_file() {
     //let total_seconds = if file_flac.is_file() {
       if file_flac.extension() == Some(OsStr::new("flac")) {
           let reader = claxon::FlacReader::open(&file_flac).expect("failed to open FLAC stream");
@@ -103,22 +102,24 @@ fn main() -> Result<(), Error> {
             // `metaflac --block-type=VORBIS_COMMENT --list` would print.
             println!("{}={}", name, value);
           }
-          println!("Artist={}", reader.get_tag("artist").next().expect("[No Artist]"));
-          let flac_info = format!("{} - {} - {}",
-            reader.get_tag("artist").next().expect("[No Artist]"),
-            reader.get_tag("date").next().expect("[No Year]"),
-            reader.get_tag("album").next().expect("[No Album]")
-          );
+          //println!("Artist={}", reader.get_tag("artist").next().expect("[No Artist]"));
+          //let flac_info = format!("{} - {} - {}",
+          //  reader.get_tag("artist").next().expect("[No Artist]"),
+          //  reader.get_tag("date").next().expect("[No Year]"),
+          //  reader.get_tag("album").next().expect("[No Album]")
+          //);
 
-          let streaminfo = reader.streaminfo();
-          let sample_rate:u64 = streaminfo.sample_rate.into();
-          println!("Flac specs: {}/{} {} Channels", streaminfo.bits_per_sample, sample_rate/1000, streaminfo.channels);
+          //let streaminfo = reader.streaminfo();
+          //let sample_rate:u64 = streaminfo.sample_rate.into();
+          //println!("Flac specs: {}/{} {} Channels", streaminfo.bits_per_sample, sample_rate/1000, streaminfo.channels);
 
-          if let Some(x) = streaminfo.samples {
-            (Some(x.rounded_div(sample_rate)), Some(flac_info))
-          } else {
-            (None, Some(flac_info))
-          }
+          //if let Some(x) = streaminfo.samples {
+          //  (Some(x.rounded_div(sample_rate)), Some(reader.streaminfo()))
+          //} else {
+          //  (None, Some(reader.streaminfo()))
+          //}
+          (Some("test".to_string()), Some(reader.streaminfo()))
+
       } else {
         (None, None)
       }
@@ -126,14 +127,41 @@ fn main() -> Result<(), Error> {
       (None, None)
     };
 
+    let total_seconds =
+      if let Some(si) = streaminfo {
+        //println!("SI: {:#?}", si);
+        println!("Flac specs: {}/{} {} Channels", si.bits_per_sample, si.sample_rate/1000, si.channels);
+        if let Some(x) = si.samples {
+          let sample_rate:u64 = si.sample_rate.into();
+          Some((x + sample_rate / 2) / sample_rate)
+        } else {
+          None
+        }
+      } else {
+        None
+      };
+
+//    let flac_info = {
+//      if let Some(r) = reader {
+//        (r.get_tag("artist").next(),
+//        r.get_tag("date").next(),
+//        r.get_tag("album").next())
+//      } else {
+//        (None, None, None)
+//      }
+//    };
+
+    //println!("Debug total_seconds: {:?}", total_seconds);
+    //println!("Debug flac_info: {:?}", flac_info);
+
     println!();
     let dir_info = parent_dir.iter().last().unwrap().to_str().unwrap();
     if dir_info == cue_info {
       print!("{}", cue_info.bold());
     } else {
-      if let Some(a) = flac_info {
-        println!("Data from flac: {}", a);
-      }
+//      if let Some(a) = flac_info {
+//        println!("Data from flac: {}", a);
+//      }
       println!("Data from dir: {}", dir_info);
       print!("Data from cue: {}", cue_info);
     }
@@ -144,6 +172,7 @@ fn main() -> Result<(), Error> {
     }
 
 
+    //println!("Debug: {:#?}", file.tracks);
 
     for ref t in file.tracks {
 

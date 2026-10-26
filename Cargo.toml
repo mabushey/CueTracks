@@ -10,5 +10,4 @@ clap = { version = "4.4.17", features = ["derive"] }
 claxon = "0.4.3"
 colored = "2.1.0"
 cue_sheet = { git = "https://github.com/mabushey/cue_sheet", rev = "41c3b65" }
-rounded-div = "0.1.2"
 walkdir = "2.4.0"
