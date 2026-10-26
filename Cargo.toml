@@ -2,7 +2,13 @@
 name = "cuetracks"
 version = "0.1.0"
 edition = "2021"
+authors = ["Michael Bushey <git@mir.rocks>"]
 description = "Show track names and durations from cue sheets and FLAC files"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/mabushey/cuetracks"
+readme = "README.md"
+keywords = ["audio", "cue", "flac", "music"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "4.4.17", features = ["derive"] }
