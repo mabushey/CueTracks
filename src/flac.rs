@@ -135,7 +135,9 @@ fn parse_streaminfo(b: &[u8]) -> Result<StreamBits> {
     }
     let min_block = u16::from_be_bytes([b[0], b[1]]);
     let max_block = u16::from_be_bytes([b[2], b[3]]);
-    if min_block < 16 || min_block > max_block {
+    // A zero minimum means the encoder left the field blank. The sample count
+    // later in the block is still valid, and the last track needs that length.
+    if min_block != 0 && (min_block < 16 || min_block > max_block) {
         return Err(Error::new("invalid block size in streaminfo"));
     }
     // 20 bits of sample rate, 3 of (channels - 1), 5 of (bits per sample - 1),
@@ -434,6 +436,22 @@ mod tests {
         assert_eq!(info.channels, 2);
         assert_eq!(info.bits_per_sample, 16);
         assert_eq!(info.samples, Some(195_448_260));
+    }
+
+    #[test]
+    fn a_blank_minimum_block_size_still_yields_the_sample_count() {
+        // Recital of the Script, CD1. Minimum block size is 0; the rest is
+        // 44100 Hz, stereo, 16-bit, 132116544 samples.
+        let data = [
+            0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x42, 0x10, 0x0a, 0xc4, 0x42, 0xf0,
+            0x07, 0xdf, 0xf0, 0x40, 0x98, 0x90, 0x25, 0xc5, 0x38, 0x90, 0x0a, 0x2d, 0xda, 0x6b,
+            0x00, 0x5a, 0x45, 0x5d, 0x56, 0x37,
+        ];
+        let info = parse_streaminfo(&data).unwrap();
+        assert_eq!(info.sample_rate, 44_100);
+        assert_eq!(info.channels, 2);
+        assert_eq!(info.bits_per_sample, 16);
+        assert_eq!(info.samples, Some(132_116_544));
     }
 
     #[test]
