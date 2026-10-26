@@ -1,5 +1,5 @@
 {
-  description = "scene-parse development environment";
+  description = "cuetracks development environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -22,16 +22,11 @@
           packages = with pkgs; [
             rustc
             cargo
-            rust-analyzer
             rustfmt
-            pkg-config
-          ];
-
-          buildInputs = with pkgs; [
-            openssl
+            clippy
+            rust-analyzer
           ];
         };
       });
     };
 }
-

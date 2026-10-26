@@ -2,12 +2,9 @@
 name = "cuetracks"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Show track names and durations from cue sheets and FLAC files"
 
 [dependencies]
 clap = { version = "4.4.17", features = ["derive"] }
-claxon = "0.4.3"
 colored = "2.1.0"
-cue_sheet = { git = "https://github.com/mabushey/cue_sheet", rev = "41c3b65" }
 walkdir = "2.4.0"
